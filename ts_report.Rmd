@@ -1,0 +1,111 @@
+---
+title: "Time Series Project"
+author: "Natalia Pludra, Gasper Pust"
+output: html_document
+---
+
+<style>
+  .figure .caption {
+    text-align: center;
+  }
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+Sys.setlocale("LC_ALL", "English")
+```
+
+```{r message=FALSE, warning=FALSE}
+library(xts)
+library(forecast)
+library(tseries)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+# library(gridExtra)
+```
+
+
+# Introduction
+
+Forecasting real-world time series data is a fundamental theme in statistical modeling. This project focuses on analyzing and forecasting website traffic for an academic teaching notes website using robust statistical methods. The objective is to develop accurate models for predicting web traffic, leveraging patterns in the data. The report documents the full analytical process, including data preparation, model building, and validation.
+
+# Dataset
+
+This dataset contains five years of daily time series data capturing various traffic metrics for a statistical forecasting teaching notes website (https://regressit.com/statforecasting.com/). The data was collected using StatCounter, a web traffic monitoring tool.
+
+The dataset contains 2 167 rows of data from **September 14, 2014**, to **August 19, 2020** and includes daily counts of:
+
+- **Page Loads:** Total pages accessed on the site.
+
+- **Unique Visitors:** Distinct users visiting the site, identified by IP address.
+
+- **First-Time Visitors:** Users accessing the site for the first time, identified by the absence of prior cookies.
+
+- **Returning Visitors:** Users with prior visits, identified through cookies when accepted.
+
+The data exhibits complex seasonality influenced by both the day of the week and the academic calendar.
+
+The source of the data is Kaggle (https://www.kaggle.com/datasets/bobnau/daily-website-visitors).
+
+
+```{r}
+df_website <- read.csv("daily-website-visitors.csv")
+
+df_website$Page.Loads <- as.numeric(gsub(",", ".", gsub("\\.", "", df_website$Page.Loads)))
+df_website$Date <- as.Date(df_website$Date,format = "%m/%d/%Y")
+
+kable(head(df_website), caption="Table1: Sample data")
+```
+
+We decided to focus on Daily Page Loads.
+
+# EDA?
+
+The first step of the project was exploratory data analysis. Figure 1 shows our time series.
+
+```{r fig.cap="Figure 1: Daily Page Loads", fig.align='center'}
+ts_website <- xts(df_website$Page.Loads, df_website$Date)
+
+plot(ts_website, main = "Daily Page Loads", ylab = "Page Loads", xlab = "Date",lwd=1.2)
+```
+
+We divide the data into a training set and a test set. The test set will contain the last 6 months of observations.
+
+```{r fig.cap="Figure 2: Daily Page Loads - training set", fig.align='center'}
+# Training set: First 4.5 years, Test set: Last 6 months
+cutoff_date <- as.Date("2020-02-19")
+train_data <- window(ts_website, end = cutoff_date)
+test_data <- window(ts_website, start = cutoff_date + 1)
+
+plot(train_data, main = "Daily Page Loads", ylab = "Page Loads", xlab = "Date",lwd=1.2)
+```
+
+The plot of the training set does not indicate the presence of a trend or heteroscedasticity. However, there is evidence of cyclic patterns in the data. We can also notice unusual observations in 2017. The number of page loads was significantly lower than in other years.
+
+Next, we proceed to compute the sample ACF and PACF for further analysis.
+
+
+```{r fig.cap="Figure 3: ACF & PACF", fig.align='center'}
+astsa::acf2(ts_website,max.lag= 104)
+```
+
+# Analysis of weekly page loads
+
+```{r message=FALSE, warning=FALSE, fig.cap="Figure 4: Weekly Page Loads", fig.align='center'}
+ts_website_weekly <- apply.weekly(ts_website, mean)
+plot(ts_website_weekly, main = "Weekly Average Page Loads", ylab = "Page Loads", xlab = "Date")
+```
+
+
+```{r fig.cap="Figure 5: ACF & PACF", fig.align='center'}
+astsa::acf2(ts_website_weekly,max.lag= 104)
+```
+
+
+# Modelling strategy
+
