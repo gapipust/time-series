@@ -1,14 +1,9 @@
 ---
 title: "Time Series Project"
 author: "Natalia Pludra, Gasper Pust"
-output: html_document
+output:
+  pdf_document: default
 ---
-
-<style>
-  .figure .caption {
-    text-align: center;
-  }
-</style>
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
@@ -23,6 +18,7 @@ Sys.setlocale("LC_ALL", "English")
 library(xts)
 library(forecast)
 library(tseries)
+library(astsa)
 library(ggplot2)
 library(dplyr)
 library(knitr)
@@ -64,19 +60,19 @@ kable(head(df_website), caption="Table1: Sample data")
 
 We decided to focus on Daily Page Loads.
 
-# EDA?
+# Exploratory Data Analysis
 
-The first step of the project was exploratory data analysis. Figure 1 shows our time series.
+The first step of the project was EDA. Figure 1 shows our time series.
 
-```{r fig.cap="Figure 1: Daily Page Loads", fig.align='center'}
+```{r fig.cap="Daily Page Loads", out.width='85%',out.height='85%', fig.align='center'}
 ts_website <- xts(df_website$Page.Loads, df_website$Date)
 
-plot(ts_website, main = "Daily Page Loads", ylab = "Page Loads", xlab = "Date",lwd=1.2)
+plot(ts_website, main = "Daily Page Loads", ylab = "Page Loads",lwd=1.2)
 ```
 
 We divide the data into a training set and a test set. The test set will contain the last 6 months of observations.
 
-```{r fig.cap="Figure 2: Daily Page Loads - training set", fig.align='center'}
+```{r fig.cap="Daily Page Loads - training set", out.width='85%',out.height='85%', fig.align='center'}
 # Training set: First 4.5 years, Test set: Last 6 months
 cutoff_date <- as.Date("2020-02-19")
 train_data <- window(ts_website, end = cutoff_date)
@@ -87,25 +83,124 @@ plot(train_data, main = "Daily Page Loads", ylab = "Page Loads", xlab = "Date",l
 
 The plot of the training set does not indicate the presence of a trend or heteroscedasticity. However, there is evidence of cyclic patterns in the data. We can also notice unusual observations in 2017. The number of page loads was significantly lower than in other years.
 
-Next, we proceed to compute the sample ACF and PACF for further analysis.
+Basic statistics and distribution of the Daily Page Loads are presented in Table 2.
 
+```{r message=FALSE, warning=FALSE, fig.cap="Histogram of Daily Page Loads", fig.align='center', out.width='85%',out.height='85%'}
+summary(df_website$Page.Loads)
 
-```{r fig.cap="Figure 3: ACF & PACF", fig.align='center'}
-astsa::acf2(ts_website,max.lag= 104)
+ggplot(df_website, aes(Page.Loads))+
+  geom_histogram(fill="peachpuff3",color="black")+
+  labs(x="Page Loads")+
+  theme_minimal()
+```
+There is no missing values in our data.
+
+In Figure 3 we present boxplots of Page Loads by day of the week.
+
+```{r message=FALSE, warning=FALSE, fig.cap="Boxplot of Page Loads by day of the week", fig.align='center', out.width='85%',out.height='85%'}
+ggplot(df_website,aes(x=factor(Day,levels=c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")),y=Page.Loads, group=Day))+
+  geom_boxplot(aes(fill=Day))+
+  labs(x="Day of the week", y="Page Loads")+
+  theme_minimal()+
+  theme(legend.position = "none")
 ```
 
-# Analysis of weekly page loads
+We can observe that website traffic is lower during weekends.
 
-```{r message=FALSE, warning=FALSE, fig.cap="Figure 4: Weekly Page Loads", fig.align='center'}
+We will check if the time series is stationary using Augmented Dickey-Fuller (ADF) test.
+
+```{r}
+adf.test(ts_website, alternative = "stationary")
+```
+Small p-value indicates that the time series is stationary (assuming significance level of 0.05).
+
+Next, we proceed to compute the sample ACF and PACF for further analysis.
+
+```{r fig.cap="Figure 3: ACF and PACF", fig.align='center'}
+invisible(acf2(ts_website,max.lag= 80))
+```
+
+The seasonality feature are present in the sample ACF which shows cycles of 7 days - we have weekly seasonality.
+
+```{r}
+lag1.plot(ts_website,16)
+```
+We can see the strongest correlation at lag 1, 7 and 14.
+
+# Seasonal Component
+
+As we observed in the previous part, there is a weekly seasonal component in our time series. We will try various types of differencing to remove this component.
+
+```{r message=FALSE, warning=FALSE, fig.cap="...", fig.align='center'}
+dlm1 <- diff(train_data,1)
+plot(dlm1,lwd=1,main=expression(paste(Delta, "Page Loads train")))
+invisible(acf2(dlm1,main=expression(paste(Delta, "Page Loads train"))))
+
+dlm7 <- diff(train_data,7)
+plot(dlm7,lwd=1,,main=expression(paste(Delta[7], "Page Loads train")))
+invisible(acf2(dlm7,main=expression(paste(Delta[7], "Page Loads train"))))
+
+dlm7.1 <- diff(diff(train_data,7),1)
+plot(dlm7.1,lwd=1,main=expression(paste(Delta,Delta[7], "Page Loads train")))
+invisible(acf2(dlm7.1,main=expression(paste(Delta,Delta[7], "Page Loads train"))))
+```
+COMMENTS
+
+# Modelling strategy
+
+TO DO
+
+# Analysis of Weekly Page Loads
+
+Now, we are aggregating our data to weekly time series.
+
+```{r fig.align='center', fig.cap="Weekly Page Loads", message=FALSE, warning=FALSE}
 ts_website_weekly <- apply.weekly(ts_website, mean)
 plot(ts_website_weekly, main = "Weekly Average Page Loads", ylab = "Page Loads", xlab = "Date")
 ```
 
+We divide the data into a training set and a test set. The test set will contain the last 6 months of observations.
 
-```{r fig.cap="Figure 5: ACF & PACF", fig.align='center'}
-astsa::acf2(ts_website_weekly,max.lag= 104)
+```{r fig.cap="Weekly Page Loads - training set", fig.align='center'}
+# Training set: First 4.5 years, Test set: Last 6 months
+cutoff_date <- as.Date("2020-02-19")
+train_data_weekly <- window(ts_website_weekly, end = cutoff_date)
+test_data_weekly <- window(ts_website_weekly, start = cutoff_date + 1)
+
+plot(train_data_weekly, main = "Weekly Page Loads", ylab = "Page Loads", xlab = "Date")
 ```
 
+```{r fig.cap="ACF and PACF", fig.align='center'}
+invisible(acf2(ts_website_weekly,max.lag= 80))
+```
 
-# Modelling strategy
+```{r}
+adf.test(ts_website_weekly, alternative = "stationary")
+```
+
+# Analysis of Monthly Page Loads
+
+```{r}
+# Monthly Aggregation
+ts_website_monthly <- apply.monthly(ts_website, mean)
+plot(ts_website_monthly, main = "Monthly Average Page Loads", ylab = "Page Loads", xlab = "Date")
+```
+We divide the data into a training set and a test set. The test set will contain the last 6 months of observations.
+
+```{r fig.cap="Weekly Page Loads - training set", fig.align='center'}
+# Training set: First 4.5 years, Test set: Last 6 months
+cutoff_date <- as.Date("2020-02-29")
+train_data_monthly <- window(ts_website_monthly, end = cutoff_date)
+test_data_monthly <- window(ts_website_monthly, start = cutoff_date + 1)
+
+plot(train_data_monthly, main = "Weekly Page Loads", ylab = "Page Loads", xlab = "Date")
+```
+
+```{r fig.cap="ACF and PACF", fig.align='center'}
+invisible(acf2(ts_website_monthly))
+```
+
+```{r}
+adf.test(ts_website_monthly, alternative = "stationary")
+```
 

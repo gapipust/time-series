@@ -7,35 +7,23 @@ library(astsa)
 
 Sys.setlocale("LC_ALL", "English") # to have labels (months) on graphs in English
 
+# df_website <- read.csv("daily-website-visitors.csv")
 df_website <- read.csv("daily-website-visitors.csv")
 head(df_website)
 df_website$Returning.Visits <- as.numeric(gsub(",", ".", gsub("\\.", "", df_website$Returning.Visits)))
 df_website$Page.Loads <- as.numeric(gsub(",", ".", gsub("\\.", "", df_website$Page.Loads)))
 df_website$Date <- as.Date(df_website$Date,format = "%m/%d/%Y")
 
+######################### EDA ################################
 # time series object
-ts_website <- xts(df_website$Returning.Visits, df_website$Date)
-plot(ts_website)
-
+# ts_website <- xts(df_website$Returning.Visits, df_website$Date)
+# plot(ts_website)
 # I chose Page.Loads but later we can try also Returning.Visits
 ts_website <- xts(df_website$Page.Loads, df_website$Date)
 plot(ts_website)
 plot(ts_website, main = "Daily Page Loads", ylab = "Page Loads", xlab = "Date")
 
 # I also checked columns Unique.Visits and First.Time.Visits but a plot didn't look nice
-
-# Weekly Aggregation
-ts_website_weekly <- apply.weekly(ts_website, mean)
-plot(ts_website_weekly, main = "Weekly Average Page Loads", ylab = "Page Loads", xlab = "Date")
-
-# Monthly Aggregation
-ts_website_monthly <- apply.monthly(ts_website, mean)
-plot(ts_website_monthly, main = "Monthly Average Page Loads", ylab = "Page Loads", xlab = "Date")
-
-# summary(ts_website)
-acf(ts_website, main = "ACF of Daily Page Loads")
-pacf(ts_website, main = "PACF of Daily Page Loads")
-
 
 # Training set: First 4.5 years, Test set: Last 6 months
 cutoff_date <- as.Date("2020-02-19")
@@ -45,10 +33,72 @@ plot(train_data, main = "Training and Test Data", col = "blue", xlim = range(ind
 lines(test_data, col = "red")
 legend("topright", legend = c("Training", "Test"), col = c("blue", "red"), lty = 1)
 
+summary(df_website$Page.Loads)
+
+ggplot(df_website, aes(Page.Loads))+
+  geom_histogram(fill="peachpuff3",color="black")+
+  labs(x="Page Loads")+
+  theme_minimal()
+
+ggplot(df_website,aes(x=factor(Day,levels=c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")),y=Page.Loads, group=Day))+
+  geom_boxplot(aes(fill=Day))+
+  labs(x="Day of the week", y="Page Loads")+
+  theme_minimal()+
+  theme(legend.position = "none")
+
 # Check the stationarity - I tried for the ARMA models but later I did with seasonality
 adf.test(ts_website, alternative = "stationary")
-
 # TS is stationary
+
+acf2(ts_website,max.lag= 80)
+
+lag1.plot(ts_website,16)
+
+# Removing seasonal component
+dlm1 <- diff(train_data,1)
+plot(dlm1,lwd=1,main=expression(paste(Delta, "Page Loads train")))
+acf2(dlm1,main=expression(paste(Delta, "Page Loads train")))
+
+dlm7 <- diff(train_data,7)
+plot(dlm7,lwd=1,,main=expression(paste(Delta[7], "Page Loads train")))
+acf2(dlm7,main=expression(paste(Delta[7], "Page Loads train")))
+
+dlm7.1 <- diff(diff(train_data,7),1)
+plot(dlm7.1,lwd=1,main=expression(paste(Delta,Delta[7], "Page Loads train")))
+acf2(dlm7.1,main=expression(paste(Delta,Delta[7], "Page Loads train")))
+
+
+######################## Weekly Aggregation ##########################
+ts_website_weekly <- apply.weekly(ts_website, mean)
+plot(ts_website_weekly, main = "Weekly Average Page Loads", ylab = "Page Loads", xlab = "Date")
+
+# Training set: First 4.5 years, Test set: Last 6 months
+cutoff_date <- as.Date("2020-02-19")
+train_data_weekly <- window(ts_website_weekly, end = cutoff_date)
+test_data_weekly <- window(ts_website_weekly, start = cutoff_date + 1)
+
+plot(train_data_weekly, main = "Weekly Page Loads", ylab = "Page Loads", xlab = "Date")
+
+acf2(ts_website_weekly,max.lag= 80)
+
+adf.test(ts_website_weekly, alternative = "stationary")
+
+######################## Monthly Aggregation #########################
+ts_website_monthly <- apply.monthly(ts_website, mean)
+plot(ts_website_monthly, main = "Monthly Average Page Loads", ylab = "Page Loads", xlab = "Date")
+
+# Training set: First 4.5 years, Test set: Last 6 months
+cutoff_date <- as.Date("2020-02-29")
+train_data_monthly <- window(ts_website_monthly, end = cutoff_date)
+test_data_monthly <- window(ts_website_monthly, start = cutoff_date + 1)
+
+plot(train_data_monthly, main = "Weekly Page Loads", ylab = "Page Loads", xlab = "Date")
+
+acf2(ts_website_monthly)
+
+adf.test(ts_website_monthly, alternative = "stationary") # not stationary
+
+######################### Models ##############################
 
 # we see seasonality trend in ACF and PACF (lag 7 = weekly seasonality)
 
