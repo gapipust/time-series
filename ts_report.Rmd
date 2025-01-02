@@ -3,6 +3,8 @@ title: "Time Series Project"
 author: "Natalia Pludra, Gasper Pust"
 output:
   pdf_document: default
+header-includes:
+  - \usepackage{subfig}
 ---
 
 ```{r setup, include=FALSE}
@@ -27,7 +29,6 @@ library(tsbox)
 library(latex2exp)
 library(lubridate)
 library(scales)
-# library(gridExtra)
 ```
 
 
@@ -37,7 +38,7 @@ Forecasting real-world time series data is a fundamental theme in statistical mo
 
 # Dataset
 
-This dataset contains five years of daily time series data capturing various traffic metrics for a statistical forecasting teaching notes website (https://regressit.com/statforecasting.com/). The data was collected using StatCounter, a web traffic monitoring tool.
+This dataset contains daily time series data capturing various traffic metrics for a statistical forecasting teaching notes website (https://regressit.com/statforecasting.com/). The data was collected using StatCounter, a web traffic monitoring tool.
 
 The dataset contains 2 167 rows of data from **September 14, 2014**, to **August 19, 2020** and includes daily counts of:
 
@@ -60,24 +61,24 @@ df_website <- read.csv("daily-website-visitors.csv")
 df_website$Page.Loads <- as.numeric(gsub(",", ".", gsub("\\.", "", df_website$Page.Loads)))
 df_website$Date <- as.Date(df_website$Date,format = "%m/%d/%Y")
 
-kable(head(df_website), caption="Table1: Sample data")
+kable(head(df_website,n=4), caption="Table1: Sample data")
 ```
 
 We decided to focus on Daily Page Loads.
 
 # Exploratory Data Analysis
 
-The first step of the project was EDA. Figure 1 shows our time series.
-
-```{r fig.cap="Daily Page Loads", out.width='75%', out.height='75%', fig.align='center'}
-ts_website <- xts(df_website$Page.Loads, df_website$Date)
-
-plot(ts_website, main = "Daily Page Loads", ylab = "Page Loads",lwd=1.2)
-```
+The first step of the project was EDA. Figure 1 (a) shows our time series.
 
 We divide the data into a training set and a test set. The test set will contain the last 6 months of observations.
 
-```{r fig.cap="Daily Page Loads - training set", out.width='75%', out.height='75%', fig.align='center'}
+CHANGE THE SIZE OF TRAINING AND TEST SET? 60 DAYS?
+
+```{r fig.cap="Daily Page Loads", fig.subcap=c("The entire dataset", "Training set"), out.width='50%', out.height='50%'}
+ts_website <- xts(df_website$Page.Loads, df_website$Date)
+
+plot(ts_website, main = "Daily Page Loads", ylab = "Page Loads",lwd=1.2)
+
 # Training set: First 4.5 years, Test set: Last 6 months
 cutoff_date <- as.Date("2020-02-19")
 train_data <- window(ts_website, end = cutoff_date)
@@ -86,24 +87,21 @@ test_data <- window(ts_website, start = cutoff_date + 1)
 plot(train_data, main = "Daily Page Loads", ylab = "Page Loads", xlab = "Date",lwd=1.2)
 ```
 
-The plot of the training set does not indicate the presence of a trend or heteroscedasticity. However, there is evidence of cyclic patterns in the data. We can also notice unusual observations in 2017. The number of page loads was significantly lower than in other years.
+The plot of the training set (Figure 1 (b)) does not indicate the presence of a trend or heteroscedasticity. However, there is evidence of cyclic patterns in the data. We can also notice unusual observations in 2017. The number of page loads was significantly lower than in other years.
 
-Basic statistics and distribution of the Daily Page Loads are presented in Table 2.
+Basic statistics and distribution of the Daily Page Loads are presented in Table 2 and Figure 2 (a).
+There is no missing values in our data.
 
-```{r message=FALSE, warning=FALSE, fig.cap="Histogram of Daily Page Loads", fig.align='center', out.width='75%', out.height='75%'}
+In the Figure 2 (b) we presented boxplots of Page Loads by day of the week.
+
+```{r message=FALSE, warning=FALSE, fig.cap="Daily Page Loads Analysis", fig.subcap=c("Histogram of Daily Page Loads", "Boxplot of Page Loads by day of the week"), out.width='50%', out.height='50%'}
 summary(df_website$Page.Loads)
 
 ggplot(df_website, aes(Page.Loads)) +
   geom_histogram(fill="peachpuff3",color="black") +
   labs(x="Page Loads") +
   theme_minimal()
-```
 
-There is no missing values in our data.
-
-In the figure below we presented boxplots of Page Loads by day of the week.
-
-```{r message=FALSE, warning=FALSE, fig.cap="Boxplot of Page Loads by day of the week", fig.align='center', out.width='75%', out.height='75%'}
 ggplot(df_website,aes(x=factor(Day,levels=c("Sunday", "Monday", "Tuesday", 
       "Wednesday", "Thursday", "Friday", "Saturday")),y=Page.Loads, group=Day)) +
   geom_boxplot(aes(fill=Day)) +
@@ -122,7 +120,7 @@ adf.test(ts_website, alternative = "stationary")
 
 Small p-value indicates that the time series is stationary (assuming significance level of 0.05).
 
-Next, we proceed to compute the sample ACF and PACF for further analysis.
+Next, we proceed to compute the sample ACF and PACF for further analysis (Figure 3).
 
 ```{r fig.cap="ACF and PACF", fig.align='center', out.width='75%',out.height='75%'}
 invisible(acf2(ts_website,max.lag= 80))
@@ -130,31 +128,35 @@ invisible(acf2(ts_website,max.lag= 80))
 
 The seasonality feature are present in the sample ACF which shows cycles of 7 days - we have weekly seasonality.
 
-```{r fig.cap="Correlation lag plots", fig.align='center', out.width='75%', out.height='75%'}
-lag1.plot(ts_website,16)
+```{r fig.cap="Correlation lag plots", fig.align='center', out.width='80%', out.height='80%'}
+lag1.plot(ts_website,16,cex=0.5)
 ```
 
-We can see the strongest correlation at lag 1, 7 and 14.
+Looking at lag plots in Figure 4, we can see the strongest correlation at lag 1, 7 and 14.
 
 # Seasonal Component and Modelling
 
 As we observed in the previous part, there is a weekly seasonal component in our time series. We will try various types of differencing to remove this component.
 
-```{r message=FALSE, warning=FALSE, fig.cap="Plots of differenced data", fig.align='center', out.width='75%', out.height='75%'}
+```{r message=FALSE, warning=FALSE, fig.cap="Differenced data",fig.subcap=c("Page Loads over time", "ACF and PACF"), out.width='50%', out.height='50%'}
 dlm1 <- diff(train_data,1)
 plot(dlm1,lwd=1,main=expression(paste(Delta, "Page Loads train")))
 invisible(acf2(dlm1,main=expression(paste(Delta, "Page Loads train"))))
+```
 
+```{r message=FALSE, warning=FALSE, fig.cap="Seasonally differenced data (period of 7 days)", fig.subcap=c("Page Loads over time", "ACF and PACF"), out.width='50%', out.height='50%'}
 dlm7 <- diff(train_data,7)
 plot(dlm7,lwd=1,,main=expression(paste(Delta[7], "Page Loads train")))
 invisible(acf2(dlm7,main=expression(paste(Delta[7], "Page Loads train"))))
+```
 
+```{r message=FALSE, warning=FALSE, fig.cap="Differenced and seasonally differenced (period of 7 days) data",fig.subcap=c("Page Loads over time", "ACF and PACF"), out.width='50%', out.height='50%'}
 dlm7.1 <- diff(diff(train_data,7),1)
 plot(dlm7.1,lwd=1,main=expression(paste(Delta,Delta[7], "Page Loads train")))
 invisible(acf2(dlm7.1,main=expression(paste(Delta,Delta[7], "Page Loads train"))))
 ```
 
-Seasonally (with period of 7 days) and regularly differenced data, $\Delta_{7}\Delta Page Loads train$ seems more stationary. This implies a unit root $d=1$ as well as a seasonal unit root, $D=1.$ We can see that ACF decays to zero quicker than PACF indicating strong MA component of the model. ACF shows significant correlation at lags 7 and 14, which implies $q=3$ and $Q=2$. PACF shows significant correlation at lags 7, 14, 21, 28, 35, 42 and 49, which suggests $p=7$. 
+Seasonally (with period of 7 days) and regularly differenced data in Figure 7, $\Delta_{7}\Delta Page Loads train$ seems more stationary. This implies a unit root $d=1$ as well as a seasonal unit root, $D=1.$ We can see that ACF decays to zero quicker than PACF indicating strong MA component of the model. ACF shows significant correlation at lags 7 and 14, which implies $q=3$ and $Q=2$. PACF shows significant correlation at lags 7, 14, 21, 28, 35, 42 and 49, which suggests $p=7$. 
 
 We will try a set of models in order to find the optimal one: M1:$SARIMA(7,1,3)\times(0,1,2)_{7};$ M2:$SARIMA(6,1,3)\times(0,1,2)_{7};$ M3:$SARIMA(5,1,3)\times(0,1,2)_{7};$ M4:$SARIMA(5,1,2)\times(0,1,2)_{7};$ M5:$SARIMA(5,1,3)\times(1,1,2)_{7};$ M6:$SARIMA(5,1,3)\times(1,1,2)_{7};$. For each estimated model check adequacy by analyzing diagnostic on residuals and significance of estimated parameters.
 
@@ -172,6 +174,8 @@ visitors.fit5=sarima(train_data,5,1,3,1,1,2,7)
 visitors.fit6=sarima(train_data,5,1,3,2,1,2,7)
 ```
 
+COMMENTS ABOUT RESIDUALS - UNCORRELATED, GAUSSIAN DISTRIBUTION?
+
 ```{r message=FALSE, warning=FALSE, fig.align='center', out.width='75%', out.height='75%'}
 visitors.fit1
 
@@ -185,6 +189,8 @@ visitors.fit5
 
 visitors.fit6
 ```
+
+COMMENT ABOUT ESTIMATED PARAMETERS SIGNIFICANCE
 
 By comparing the AIC values of the selected models we can see that the model that provides the best fit is Model 5 $SARIMA(5,1,3)\times(1,1,2)_{7}$. We will do the forecasting with that model.
 
@@ -387,7 +393,7 @@ ggplot(error_df, aes(x = Date)) +
   geom_hline(yintercept = 0, color = "black", size = 1)
 ```
 
-
+95% PREDICTION INTERVALS 
 
 ```{r}
 test_df_filtered <- head(test_df, 60)
@@ -414,15 +420,11 @@ Based on accuracy measures in the table above, the best approach for forecasting
 
 Now, we are aggregating our data to weekly time series.
 
-```{r fig.align='center', fig.cap="Weekly Page Loads", message=FALSE, warning=FALSE, out.width='75%', out.height='75%'}
+```{r fig.cap="Weekly Page Loads", fig.subcap=c("The entire dataset","The training dataset"), message=FALSE, warning=FALSE, out.width='50%', out.height='50%'}
 ts_website_weekly <- apply.weekly(ts_website, mean)
 plot(ts_website_weekly, main = "Weekly Average Page Loads", 
      ylab = "Page Loads", xlab = "Date")
-```
 
-We divide the data into a training set and a test set. The test set will contain the last 6 months of observations.
-
-```{r fig.cap="Weekly Page Loads - training set", fig.align='center', out.width='75%', out.height='75%'}
 # Training set: First 4.5 years, Test set: Last 6 months
 cutoff_date <- as.Date("2020-02-19")
 train_data_weekly <- window(ts_website_weekly, end = cutoff_date)
@@ -430,6 +432,9 @@ test_data_weekly <- window(ts_website_weekly, start = cutoff_date + 1)
 
 plot(train_data_weekly, main = "Weekly Page Loads", ylab = "Page Loads", xlab = "Date")
 ```
+
+We divide the data into a training set and a test set. The test set will contain the last 6 months of observations.
+
 
 ```{r fig.cap="ACF and PACF", fig.align='center', out.width='75%', out.height='75%'}
 invisible(acf2(ts_website_weekly,max.lag= 80))
@@ -441,7 +446,7 @@ adf.test(ts_website_weekly, alternative = "stationary")
 
 Similar to the process before we try to find the best model for the weekly data. Here the seasonality seems yearly (period of 52 weeks). We try with the model $SARIMA(3,1,0)\times(1,1,1)_{52}$.
 
-```{r message=FALSE, warning=FALSE, fig.align='center', fig.cap="Plots of differenced data", out.width='75%', out.height='75%'}
+```{r message=FALSE, warning=FALSE, fig.cap="Differenced data", fig.subcap=c("Page Loads over time", "ACF and PACF"), out.width='50%', out.height='50%'}
 dlm52.1 <- diff(diff(train_data_weekly,52),1)
 plot(dlm52.1,lwd=1,main=expression(paste(Delta,Delta[52], "Weekly Page Loads train")))
 invisible(acf2(dlm52.1,main=expression(paste(Delta,Delta[52], 
@@ -456,46 +461,7 @@ weekly_visitors.fit1=sarima(train_data_weekly,3,1,0,1,1,1,52)
 weekly_visitors.fit1
 ```
 
-# Analysis of Monthly Page Loads
 
-```{r fig.cap="Monthly Average Page Loads", fig.align='center', out.width='75%', out.height='75%'}
-# Monthly Aggregation
-ts_website_monthly <- apply.monthly(ts_website, mean)
-plot(ts_website_monthly, main = "Monthly Average Page Loads", 
-     ylab = "Page Loads", xlab = "Date")
-```
-We divide the data into a training set and a test set. The test set will contain the last 6 months of observations.
+# Summary
 
-```{r fig.cap="Weekly Page Loads - training set", fig.align='center', out.width='75%', out.height='75%'}
-# Training set: First 4.5 years, Test set: Last 6 months
-cutoff_date <- as.Date("2020-02-29")
-train_data_monthly <- window(ts_website_monthly, end = cutoff_date)
-test_data_monthly <- window(ts_website_monthly, start = cutoff_date + 1)
-
-plot(train_data_monthly, main = "Weekly Page Loads", 
-     ylab = "Page Loads", xlab = "Date")
-```
-
-```{r fig.cap="ACF and PACF", fig.align='center', out.width='75%', out.height='75%'}
-invisible(acf2(ts_website_monthly))
-```
-
-```{r}
-adf.test(ts_website_monthly, alternative = "stationary")
-```
-
-Similar to the process before we try to find the best model for the weekly data. Here the seasonality seems yearly (period of 12 months). We try with the model $SARIMA(0,1,0)\times(0,1,1)_{12}$.
-
-```{r message=FALSE, warning=FALSE, fig.align='center', fig.cap="Plots of differenced data", out.width='75%', out.height='75%'}
-dlm12.1 <- diff(diff(train_data_weekly,12),1)
-plot(dlm12.1,lwd=1,main=expression(paste(Delta,Delta[12], "Monthly Page Loads train")))
-invisible(acf2(dlm12.1,main=expression(paste(Delta,Delta[12], "Monthly Page Loads train"))))
-```
-
-```{r message=FALSE, warning=FALSE, results='hide', fig.align='center', out.width='75%', out.height='75%'}
-monthly_visitors.fit1=sarima(train_data_monthly,0,1,0,0,1,1,12)
-```
-
-```{r message=FALSE, warning=FALSE, fig.align='center', out.width='75%', out.height='75%'}
-monthly_visitors.fit1
-```
+BENEFITS AND LIMITATIONS OF THE MODELS
