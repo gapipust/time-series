@@ -344,7 +344,7 @@ errors_3 <- test_df_filtered$Observed - forecast_df_3$Forecast
 errors_4 <- test_df_filtered$Observed - forecast_df_4$Forecast
 
 error_df <- data.frame(
-  Date = test_df$Date,
+  Date = test_df_filtered$Date,
   '60-step ahead forecast' = errors_1,
   '1-step ahead forecast (Interaction)' = errors_2,
   '1-step ahead forecast (Expanding windows)' = errors_3,
@@ -505,7 +505,7 @@ ggplot() +
 ```{r message=FALSE, warning=FALSE, fig.cap="Plot of forecast errors", fig.align='center', out.width='75%', out.height='75%'}
 errors_3 <- test_df_filtered$Observed - forecast_df_3$Forecast
 
-error_df <- data.frame(Date = test_df$Date,
+error_df <- data.frame(Date = test_df_filtered$Date,
   '1-step ahead forecast (Expanding windows)' = errors_3)
 
 error_df$Date <- as.Date(error_df$Date)
