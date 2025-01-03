@@ -449,9 +449,9 @@ weekly_visitors.fit1
 ```{r message=FALSE, warning=FALSE, fig.cap="Plot of forecast with expanding windows method", fig.align='center', out.width='75%', out.height='75%'}
 ts_df <- data.frame(time = index(ts_website_weekly), value = coredata(ts_website_weekly))
 
-# Approach 3: Forecasting 52 weeks with 1-step ahead - Expanding windows
+# Approach 3: Forecasting 26 weeks with 1-step ahead - Expanding windows
 output_3 <- data.frame()
-for (i in 0:51) {
+for (i in 0:25) {
   df_select <- ts_df %>% filter(time <= cutoff_date + weeks(i))
   ts_select <- ts(df_select$value, freq = 52, end = c(year(tail(df_select$time, 1)), 
     yday(tail(df_select$time, 1))))
@@ -527,7 +527,7 @@ ggplot(error_df, aes(x = Date)) +
 
 
 ```{r}
-test_df_filtered <- head(test_df, 52)
+test_df_filtered <- head(test_df, 26)
 
 accuracy <- accuracy(forecast_df_3$Forecast, test_df_filtered$Observed)
 
