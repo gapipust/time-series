@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 Sys.setlocale("LC_ALL", "English")
 ```
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, include=FALSE}
 library(xts)
 library(forecast)
 library(tseries)
@@ -158,59 +158,45 @@ invisible(acf2(dlm7.1,main=expression(paste(Delta,Delta[7], "Page Loads train"))
 
 Seasonally (with period of 7 days) and regularly differenced data in Figure 7, $\Delta_{7}\Delta Page Loads train$ seems more stationary. This implies a unit root $d=1$ as well as a seasonal unit root, $D=1.$ We can see that ACF decays to zero quicker than PACF indicating strong MA component of the model. ACF shows significant correlation at lags 7 and 14, which implies $q=3$ and $Q=2$. PACF shows significant correlation at lags 7, 14, 21, 28, 35, 42 and 49, which suggests $p=7$. 
 
-We will try a set of models in order to find the optimal one: M1:$SARIMA(7,1,3)\times(0,1,2)_{7};$ M2:$SARIMA(6,1,3)\times(0,1,2)_{7};$ M3:$SARIMA(5,1,3)\times(0,1,2)_{7};$ M4:$SARIMA(5,1,2)\times(0,1,2)_{7};$ M5:$SARIMA(5,1,3)\times(1,1,2)_{7};$ M6:$SARIMA(5,1,3)\times(1,1,2)_{7};$. For each estimated model check adequacy by analyzing diagnostic on residuals and significance of estimated parameters.
+We will try a set of models in order to find the optimal one: M1:$SARIMA(7,1,3)\times(0,1,2)_{7};$ M2:$SARIMA(6,1,3)\times(0,1,2)_{7};$ M3:$SARIMA(5,1,3)\times(0,1,2)_{7};$ M4:$SARIMA(5,1,2)\times(0,1,2)_{7};$ M5:$SARIMA(5,1,3)\times(1,1,2)_{7};$ M6:$SARIMA(5,1,3)\times(1,1,2)_{7};$. For each estimated model check adequacy by analyzing diagnostic on residuals and significance of estimated parameters. Below are presented the models with best results.
 
 ```{r message=FALSE, warning=FALSE, results='hide', fig.align='center', out.width='75%', out.height='75%'}
-visitors.fit1=sarima(train_data,7,1,3,0,1,2,7)
-
-visitors.fit2=sarima(train_data,6,1,3,0,1,2,7)
-
 visitors.fit3=sarima(train_data,5,1,3,0,1,2,7)
-
-visitors.fit4=sarima(train_data,5,1,2,0,1,2,7)
 
 visitors.fit5=sarima(train_data,5,1,3,1,1,2,7)
 
 visitors.fit6=sarima(train_data,5,1,3,2,1,2,7)
 ```
 
-COMMENTS ABOUT RESIDUALS - UNCORRELATED, GAUSSIAN DISTRIBUTION?
+Models 3, 5, and 6 exhibit comparable residual behavior, with no significant patterns in their standardized residuals and minimal autocorrelation in the ACF plots. However, model 3 shows slight deviations from normality in the Q-Q plot and lower p-values in the Ljung-Box test, suggesting it is less effective at capturing serial correlations compared to the others. Models 5 and 6 demonstrate better residual diagnostics, with higher Ljung-Box p-values and closer adherence to normality. Among them, model 5 has slightly lower residual variability and more consistent diagnostic results, making it the most suitable model for forecasting.
 
 ```{r message=FALSE, warning=FALSE, fig.align='center', out.width='75%', out.height='75%'}
-visitors.fit1
-
-visitors.fit2
-
 visitors.fit3
-
-visitors.fit4
 
 visitors.fit5
 
 visitors.fit6
 ```
 
-COMMENT ABOUT ESTIMATED PARAMETERS SIGNIFICANCE
-
-By comparing the AIC values of the selected models we can see that the model that provides the best fit is Model 5 $SARIMA(5,1,3)\times(1,1,2)_{7}$. We will do the forecasting with that model.
+By comparing the AIC values of the selected models we confirm that the model that provides the best fit is Model 5 $SARIMA(5,1,3)\times(1,1,2)_{7}$. In that model, AR3, AR4, AR5, MA3, and seasonal MA1 are significant components and critical for the model's performance. However, AR1, AR2, MA1, MA2, seasonal AR1, and seasonal MA2 are not statistically significant, and therefore contribute less to the model performance.
 
 # Forecasting
 
 **Forecasting 60-days ahead**
 
-To forecast 60 steps ahead, we will use unique training data, which implies using a unique model fit.
+This method involves forecasting 60 time steps into the future using a single, fixed model fit. The model is trained on a specified dataset, which remains static throughout the process. By leveraging a unique training dataset, the approach focuses on creating a long-term prediction based on the underlying patterns and dynamics captured during model training. This method is particularly useful for scenarios where computational efficiency is prioritized, as it avoids the need for repeated model fitting.
 
 **Forecasting 60 days with 1-step ahead - Interaction**
 
-This forecasting strategy assumes we know the new data at the moment of the forecast, and we will not fit a new model based on new data. The forecast generation uses the fitted model to interact with new data to produce a forecast.
+In this approach, it is assumed that new observations become available at each time step during the forecasting process. These new data points are used in conjunction with the already fitted model to generate predictions for the next step. Unlike methods that refit the model with updated data, this strategy relies on the initial model fit to iteratively incorporate new observations into the forecasting pipeline. This approach is ideal for situations where updating the model at each step is unnecessary or computationally expensive, but the presence of real-time data enhances forecast accuracy.
 
 **Forecasting 60 days with 1-step ahead - Expanding windows**
 
-In the expanding window strategy, the training sample size increases sequentially by a time unit. The forecasts produced are based on multiple fit models.
+The expanding window approach gradually increases the size of the training dataset with each forecast step. For each new prediction, one additional time step is appended to the training data, and a new model is fitted to the expanded dataset. This process ensures that the model benefits from the most recent observations while maintaining a cumulative understanding of the past. Although computationally more demanding, this strategy often improves accuracy, especially for time series with evolving patterns or trends.
 
 **Forecasting 60 days with 1-step ahead - Recursive windows**
 
-In the recursive window strategy, the training sample maintains its size across the forecasting generation. However, with distinct sets of observation. The training sample window slides a time unit to produce a forecast. The forecasts produced are based on multiple fit models.
+The recursive window strategy maintains a fixed-size training dataset, but the set of observations within this window shifts forward by one time step for each forecast. This means that older data points are dropped as new observations are included in the training set. A new model is fitted at each step using the updated dataset. This approach balances the inclusion of recent information with a consistent training window size, making it effective for time series with short-term dependencies or when the focus is on the most recent dynamics in the data.
 
 **Plotting of all forecasts**
 
@@ -347,13 +333,15 @@ ggplot() +
     legend.direction = "vertical", legend.title = element_blank())
 ```
 
-**Choosing the best approach**
+## Choosing the best approach
+
+We checked the forecast errors of each approach used above to decide which tehnique provides best results for our dataset.
 
 ```{r message=FALSE, warning=FALSE, fig.cap="Plot of forecast errors", fig.align='center', out.width='75%', out.height='75%'}
-errors_1 <- test_df$Observed - forecast_df_1$Forecast
-errors_2 <- test_df$Observed - forecast_df_2$Forecast
-errors_3 <- test_df$Observed - forecast_df_3$Forecast
-errors_4 <- test_df$Observed - forecast_df_4$Forecast
+errors_1 <- test_df_filtered$Observed - forecast_df_1$Forecast
+errors_2 <- test_df_filtered$Observed - forecast_df_2$Forecast
+errors_3 <- test_df_filtered$Observed - forecast_df_3$Forecast
+errors_4 <- test_df_filtered$Observed - forecast_df_4$Forecast
 
 error_df <- data.frame(
   Date = test_df$Date,
@@ -393,8 +381,6 @@ ggplot(error_df, aes(x = Date)) +
   geom_hline(yintercept = 0, color = "black", size = 1)
 ```
 
-95% PREDICTION INTERVALS 
-
 ```{r}
 test_df_filtered <- head(test_df, 60)
 
@@ -414,7 +400,7 @@ knitr::kable(accuracy, digits = 4, align = "ccccccc",
   caption = "Accuracy measures for different forecasting approaches")
 ```
 
-Based on accuracy measures in the table above, the best approach for forecasting is expanding windows.
+Based on the accuracy measures in the table above, the best approach for forecasting is the expanding windows method. This method achieves the lowest values for root mean squared error (RMSE) and mean absolute error (MAE), which are critical indicators of prediction accuracy. Additionally, it outperforms other approaches in terms of mean absolute percentage error (MAPE), demonstrating its effectiveness in minimizing relative forecast errors. The expanding windows strategy effectively balances the inclusion of cumulative historical data with the integration of recent observations, leading to more reliable and precise forecasts over the 60-day horizon.
 
 # Analysis of Weekly Page Loads
 
@@ -434,7 +420,6 @@ plot(train_data_weekly, main = "Weekly Page Loads", ylab = "Page Loads", xlab = 
 ```
 
 We divide the data into a training set and a test set. The test set will contain the last 6 months of observations.
-
 
 ```{r fig.cap="ACF and PACF", fig.align='center', out.width='75%', out.height='75%'}
 invisible(acf2(ts_website_weekly,max.lag= 80))
@@ -459,6 +444,97 @@ weekly_visitors.fit1=sarima(train_data_weekly,3,1,0,1,1,1,52)
 
 ```{r message=FALSE, warning=FALSE, fig.align='center', out.width='75%', out.height='75%'}
 weekly_visitors.fit1
+```
+
+```{r message=FALSE, warning=FALSE, fig.cap="Plot of forecast with expanding windows method", fig.align='center', out.width='75%', out.height='75%'}
+ts_df <- data.frame(time = index(ts_website_weekly), value = coredata(ts_website_weekly))
+
+# Approach 3: Forecasting 52 weeks with 1-step ahead - Expanding windows
+output_3 <- data.frame()
+for (i in 0:51) {
+  df_select <- ts_df %>% filter(time <= cutoff_date + weeks(i))
+  ts_select <- ts(df_select$value, freq = 52, end = c(year(tail(df_select$time, 1)), 
+    yday(tail(df_select$time, 1))))
+  fit <- Arima(ts_select, order = c(3, 1, 0), seasonal = list(order = c(1, 1, 1), 
+    period = 52))
+  forecasted <- forecast(fit, h = 1, level = 95)
+  aux <- data.frame(time = cutoff_date + weeks(i + 1), value = as.numeric(forecasted$mean))
+  output_3 <- bind_rows(output_3, aux)
+}
+
+forecast_ts_3 <- xts(output_3$value, order.by = output_3$time)
+forecast_df_3 <- data.frame(Date = index(forecast_ts_3), Forecast = coredata(forecast_ts_3))
+
+test_df <- data.frame(Date = index(test_data_weekly), Observed = coredata(test_data_weekly))
+
+last_forecast_date <- max(forecast_df_3$Date)
+
+ts_df_filtered <- ts_df %>% filter(time <= last_forecast_date)
+test_df_filtered <- test_df %>% filter(Date <= last_forecast_date)
+
+ggplot() +
+  geom_line(data = ts_df_filtered, aes(x = time, y = value, color = "Observed"), 
+            size = 1, alpha = 0.8) +
+  geom_line(data = forecast_df_3, aes(x = Date, y = Forecast, 
+            color = "1-step ahead forecast (Expanding windows)"), size = 1) +
+  labs(title = "Forecasts from SARIMA Model for Weekly Website Visitors", 
+       x = "Date", y = "Page Loads") +
+  scale_color_manual(values = c(
+    "Observed" = "black",
+    "1-step ahead forecast (Expanding windows)" = "green")) +
+  theme_light() + theme(legend.title = element_blank(), 
+    legend.background = element_blank(), legend.position = "bottom", 
+    legend.direction = "vertical")
+
+ggplot() +
+  geom_line(data = test_df_filtered, aes(x = Date, y = Observed, color = "Observed"), 
+            size = 1, linetype = "solid") +
+  geom_line(data = forecast_df_3, aes(x = Date, y = Forecast, 
+            color = "1-step ahead forecast (Expanding windows)"), 
+            size = 1, linetype = "solid") +
+  labs(title = "Forecasting Approaches from Cutoff Date to Last Forecast", 
+       x = "Date", y = "Page Loads") +
+    scale_color_manual(values = c(
+    "Observed" = "black",
+    "1-step ahead forecast (Expanding windows)" = "green")) +
+  theme_light() + theme(legend.position = "bottom", 
+    legend.direction = "vertical", legend.title = element_blank())
+```
+
+
+```{r message=FALSE, warning=FALSE, fig.cap="Plot of forecast errors", fig.align='center', out.width='75%', out.height='75%'}
+errors_3 <- test_df_filtered$Observed - forecast_df_3$Forecast
+
+error_df <- data.frame(Date = test_df$Date,
+  '1-step ahead forecast (Expanding windows)' = errors_3)
+
+error_df$Date <- as.Date(error_df$Date)
+
+colnames(error_df) <- c('Date', '1_step_ahead_forecast_Expanding_windows')
+
+ggplot(error_df, aes(x = Date)) +
+  geom_line(aes(y = `1_step_ahead_forecast_Expanding_windows`, 
+            color = "1-step ahead forecast (Expanding windows)"), size = 1) +
+  labs(title = "Forecasting Errors for Exapanding Windows", 
+       x = "Date", y = "Forecast Error") +
+    scale_color_manual(values = c(
+    "1-step ahead forecast (Expanding windows)" = "green")) +
+  theme_light() + theme(legend.title = element_blank(), 
+      legend.background = element_blank(), legend.position = "bottom", 
+      legend.direction = "vertical") +
+  geom_hline(yintercept = 0, color = "black", size = 1)
+```
+
+
+```{r}
+test_df_filtered <- head(test_df, 52)
+
+accuracy <- accuracy(forecast_df_3$Forecast, test_df_filtered$Observed)
+
+rownames(accuracy) <- c('1-step ahead forecast (Expanding windows)')
+
+knitr::kable(accuracy, digits = 4, align = "ccccccc", 
+  caption = "Accuracy measures for Exapnding Windows")
 ```
 
 
