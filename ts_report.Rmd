@@ -335,7 +335,7 @@ ggplot() +
 
 ## Choosing the best approach
 
-We checked the forecast errors of each approach used above to decide which tehnique provides best results for our dataset.
+We checked the forecast errors of each approach used above to decide which technique provides best results for our dataset.
 
 ```{r message=FALSE, warning=FALSE, fig.cap="Plot of forecast errors", fig.align='center', out.width='75%', out.height='75%'}
 errors_1 <- test_df_filtered$Observed - forecast_df_1$Forecast
