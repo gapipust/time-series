@@ -404,7 +404,7 @@ Based on the accuracy measures in the table above, the best approach for forecas
 
 # Analysis of Weekly Page Loads
 
-Now, we are aggregating our data to weekly time series. The result is presented in Figure 14.
+Now, we are aggregating our data to weekly time series. The result is presented in Figure 13.
 
 ```{r echo=FALSE, fig.align='center', fig.cap="Weekly Page Loads", message=FALSE, warning=FALSE, out.height='80%', out.width='80%'}
 ts_website_weekly <- apply.weekly(ts_website, mean)
@@ -429,13 +429,13 @@ adf.test(ts_website_weekly, alternative = "stationary")
 
 Small p-value indicates that the time series is stationary.
 
-Next, we proceed to compute the sample ACF and PACF for further analysis.
+Next, we proceed to compute the sample ACF and PACF for further analysis (Figure 14).
 
 ```{r echo=FALSE, fig.align='center', fig.cap="ACF and PACF", out.height='75%', out.width='75%'}
 invisible(acf2(ts_website_weekly,max.lag= 80))
 ```
 
-Here the seasonality seems yearly (period of 52 weeks). Figure 16 shows seasonally (with period of 52 weeks) and regularly differenced data, $\Delta_{52}\Delta \text{Weekly Page Loads train}$ seems more stationary.
+Here the seasonality seems yearly (period of 52 weeks). Figure 15 shows seasonally (with period of 52 weeks) and regularly differenced data, $\Delta_{52}\Delta \text{Weekly Page Loads train}$ seems more stationary.
 
 ```{r echo=FALSE, fig.cap="Differenced data", fig.subcap=c("Page Loads over time", "ACF and PACF"), message=FALSE, warning=FALSE, out.height='50%', out.width='50%'}
 dlm52.1 <- diff(diff(train_data_weekly,52),1)
