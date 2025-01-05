@@ -166,21 +166,13 @@ visitors.fit6=sarima(train_data,5,1,3,2,1,2,7)
 
 Models 3, 5, and 6 exhibit comparable residual behavior, with no significant patterns in their standardized residuals and minimal autocorrelation in the ACF plots. However, model 3 shows slight deviations from normality in the Q-Q plot and lower p-values in the Ljung-Box test, suggesting it is less effective at capturing serial correlations compared to the others. Models 5 and 6 demonstrate better residual diagnostics, with higher Ljung-Box p-values and closer adherence to normality. Among them, model 5 has slightly lower residual variability and more consistent diagnostic results, making it the most suitable model for forecasting.
 
-M3 fit:
+Below are presented the characteristics of fitted models.
 
 ```{r echo=FALSE, fig.align='center', message=FALSE, warning=FALSE, out.height='75%', out.width='75%'}
 visitors.fit3
-```
 
-M5 fit:
-
-```{r echo=FALSE, fig.align='center', message=FALSE, warning=FALSE, out.height='75%', out.width='75%'}
 visitors.fit5
-```
 
-M6 fit:
-
-```{r echo=FALSE, fig.align='center', message=FALSE, warning=FALSE, out.height='75%', out.width='75%'}
 visitors.fit6
 ```
 
@@ -208,7 +200,7 @@ The recursive window strategy maintains a fixed-size training dataset, but the s
 
 **Plotting of all forecasts**
 
-```{r echo=FALSE, fig.cap="Plot of different forecast methods", message=FALSE, warning=FALSE, out.height='49%', out.width='49%'}
+```{r echo=FALSE, fig.cap="Plot of different forecast methods", fig.subcap=c("Plot of all data", "Plot of data from cutoff date"), message=FALSE, warning=FALSE, out.height='50%', out.width='50%'}
 ts_df <- data.frame(time = index(ts_website), value = coredata(ts_website))
 
 # Forecasting 60-days ahead (unique model fit)
@@ -466,7 +458,7 @@ Only seasonal MA component is not statistically significant. The residuals are n
 
 Now, we forecast 26 weeks with 1-step ahead - Expanding windows.
 
-```{r echo=FALSE, fig.cap="Plot of forecast with expanding windows method", message=FALSE, warning=FALSE, out.height='49%', out.width='49%'}
+```{r echo=FALSE, fig.cap="Plot of forecast with expanding windows method", fig.subcap=c("Plot of all data", "Plot of data from cutoff date"), message=FALSE, warning=FALSE, out.height='50%', out.width='50%'}
 ts_df <- data.frame(time = index(ts_website_weekly), value = coredata(ts_website_weekly))
 
 # Approach 3: Forecasting 26 weeks with 1-step ahead - Expanding windows
